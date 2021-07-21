@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/kelseyhightower/envconfig"
@@ -13,8 +14,10 @@ type Config struct {
 	SQLDSN    string `default:"root@/asterisk"`
 	TLSCert   string
 	TLSKey    string
-	HTTPAddr  string `default:":9080"`
-	HTTPSAddr string `default:":9443"`
+	HTTPAddr  string        `default:":9080"`
+	HTTPSAddr string        `default:":9443"`
+	CacheTime time.Duration `default:"1m"`
+	cache     *Cache        `ignored:"true"`
 }
 
 func main() {
@@ -22,6 +25,8 @@ func main() {
 	if err := envconfig.Process("", config); err != nil {
 		log.Fatalln("Could not process configuration from environment:", err)
 	}
+
+	config.cache = NewCache(config.CacheTime)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/yealink.xml", config.YealinkHandler)

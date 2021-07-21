@@ -38,7 +38,7 @@ func GrandstreamXML(entries []*Entry) ([]byte, error) {
 }
 
 func (c *Config) GrandstreamHandler(w http.ResponseWriter, r *http.Request) {
-	entries, err := GetEntries(c.SQLDSN)
+	entries, err := c.cache.GetEntries(c.SQLDSN)
 	if err != nil {
 		log.Println("ERROR: could not get entries:", err)
 		WriteError(w, http.StatusInternalServerError)
