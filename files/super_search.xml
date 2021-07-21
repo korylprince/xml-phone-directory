@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<root_super_search>
+	<item id_name="local_directory_search" display_name="Local Directory" priority="1" enable="1" />
+	<item id_name="remote_directory_search" display_name="Remote Phone Book" priority="2" enable="1" />
+	<item id_name="calllog_search" display_name="History" priority="3" enable="1" />
+</root_super_search>

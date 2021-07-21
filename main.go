@@ -31,6 +31,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/yealink.xml", config.YealinkHandler)
 	mux.HandleFunc("/grandstream.xml", config.GrandstreamHandler)
+	mux.Handle("/files/", http.FileServer(http.FS(files)))
 	middleware := handlers.CombinedLoggingHandler(os.Stdout, handlers.CompressHandler(mux))
 
 	if config.HTTPAddr != "" {
