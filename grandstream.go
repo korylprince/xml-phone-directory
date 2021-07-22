@@ -13,17 +13,32 @@ type GrandstreamRoot struct {
 }
 
 type GrandstreamEntry struct {
-	FirstName    string `xml:"FirstName"`
-	LastName     string `xml:"LastName"`
+	ID        int                 `xml:"id"`
+	FirstName string              `xml:"FirstName"`
+	LastName  string              `xml:"LastName"`
+	Phones    []*GrandstreamPhone `xml:"Phone"`
+	Frequent  int                 `xml:"Frequent"`
+	Primary   int                 `xml:"Primary"`
+}
+
+type GrandstreamPhone struct {
+	Type         string `xml:"type,attr"`
 	PhoneNumber  string `xml:"phonenumber"`
 	AccountIndex int    `xml:"accountindex"`
 }
 
 func GrandstreamXML(entries []*Entry) ([]byte, error) {
 	gEntries := make([]*GrandstreamEntry, 0, len(entries))
-	for _, e := range entries {
+	for idx, e := range entries {
 		first, last := SplitName(e.User)
-		gEntries = append(gEntries, &GrandstreamEntry{FirstName: first, LastName: last, PhoneNumber: e.Extension, AccountIndex: 1})
+		gEntries = append(gEntries, &GrandstreamEntry{
+			ID:        idx,
+			FirstName: first,
+			LastName:  last,
+			Phones:    []*GrandstreamPhone{{Type: "Work", PhoneNumber: e.Extension, AccountIndex: 1}},
+			Frequent:  0,
+			Primary:   0,
+		})
 	}
 
 	root := &GrandstreamRoot{Contacts: gEntries}
