@@ -11,13 +11,15 @@ import (
 )
 
 type Config struct {
-	SQLDSN    string `default:"root@/asterisk"`
-	TLSCert   string
-	TLSKey    string
-	HTTPAddr  string        `default:":9080"`
-	HTTPSAddr string        `default:":9443"`
-	CacheTime time.Duration `default:"1m"`
-	cache     *Cache        `ignored:"true"`
+	SQLDSN       string `default:"root@/asterisk"`
+	TLSCert      string
+	TLSKey       string
+	HTTPAddr     string        `default:":9080"`
+	HTTPSAddr    string        `default:":9443"`
+	CacheTime    time.Duration `default:"1m"`
+	CAPath       string        `default:"/etc/ssl/certs/ca-bundle.crt"`
+	HTTPOnlyCert bool          `default:"true"`
+	cache        *Cache        `ignored:"true"`
 }
 
 func main() {
@@ -28,26 +30,51 @@ func main() {
 
 	config.cache = NewCache(config.CacheTime)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/yealink.xml", config.YealinkHandler)
-	mux.HandleFunc("/grandstream/phonebook.xml", config.GrandstreamHandler)
-	mux.Handle("/files/", http.FileServer(http.FS(files)))
-	middleware := handlers.CombinedLoggingHandler(os.Stdout, handlers.CompressHandler(mux))
+	httpMux := http.NewServeMux()
+	if !config.HTTPOnlyCert {
+		httpMux.HandleFunc("/yealink.xml", config.YealinkHandler)
+		httpMux.HandleFunc("/grandstream/phonebook.xml", config.GrandstreamHandler)
+		httpMux.Handle("/files/", http.FileServer(http.FS(files)))
+	}
+	if config.CAPath != "" {
+		httpMux.HandleFunc("/ca-bundle.crt", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, config.CAPath)
+		})
+	}
 
-	if config.HTTPAddr != "" {
+	httpsMux := http.NewServeMux()
+	httpsMux.HandleFunc("/yealink.xml", config.YealinkHandler)
+	httpsMux.HandleFunc("/grandstream/phonebook.xml", config.GrandstreamHandler)
+	httpsMux.Handle("/files/", http.FileServer(http.FS(files)))
+	if config.CAPath != "" {
+		httpsMux.HandleFunc("/ca-bundle.crt", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, config.CAPath)
+		})
+	}
+
+	httpHandler := handlers.CombinedLoggingHandler(os.Stdout, handlers.CompressHandler(httpMux))
+	httpsHandler := handlers.CombinedLoggingHandler(os.Stdout, handlers.CompressHandler(httpsMux))
+
+	runHTTP := config.HTTPAddr != "" && (!config.HTTPOnlyCert || (config.HTTPOnlyCert && config.CAPath != ""))
+	runHTTPS := config.TLSCert != "" && config.TLSKey != "" && config.HTTPSAddr != ""
+	if !(runHTTP || runHTTPS) {
+		log.Fatalln("Could not start: not configured to run in HTTP or HTTPS mode")
+	}
+
+	if runHTTP {
 		go func() {
 			log.Println("INFO: listening on", config.HTTPAddr)
-			err := http.ListenAndServe(config.HTTPAddr, middleware)
+			err := http.ListenAndServe(config.HTTPAddr, httpHandler)
 			if err != nil {
 				log.Fatalln("ERROR: could not start HTTP listener:", err)
 			}
 		}()
 	}
 
-	if config.TLSCert != "" && config.TLSKey != "" && config.HTTPSAddr != "" {
+	if runHTTPS {
 		go func() {
 			log.Println("INFO: listening on", config.HTTPSAddr)
-			err := http.ListenAndServeTLS(config.HTTPSAddr, config.TLSCert, config.TLSKey, middleware)
+			err := http.ListenAndServeTLS(config.HTTPSAddr, config.TLSCert, config.TLSKey, httpsHandler)
 			if err != nil {
 				log.Fatalln("ERROR: could not start HTTPS listener:", err)
 			}
