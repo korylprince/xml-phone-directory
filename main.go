@@ -47,7 +47,7 @@ func main() {
 	httpsMux.HandleFunc("/grandstream/phonebook.xml", config.GrandstreamHandler)
 	httpsMux.Handle("/files/", http.FileServer(http.FS(files)))
 	if config.CAPath != "" {
-		httpsMux.HandleFunc("/ca-bundle.crt", func(w http.ResponseWriter, r *http.Request) {
+		httpsMux.HandleFunc("/ca.crt", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, config.CAPath)
 		})
 	}
