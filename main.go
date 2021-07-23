@@ -17,9 +17,9 @@ type Config struct {
 	HTTPAddr     string        `default:":9080"`
 	HTTPSAddr    string        `default:":9443"`
 	CacheTime    time.Duration `default:"1m"`
-	CAPath       string        `default:"/etc/ssl/certs/ca-bundle.crt"`
-	HTTPOnlyCert bool          `default:"true"`
-	cache        *Cache        `ignored:"true"`
+	CAPath       string
+	HTTPOnlyCert bool   `default:"false"`
+	cache        *Cache `ignored:"true"`
 }
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 		httpMux.Handle("/files/", http.FileServer(http.FS(files)))
 	}
 	if config.CAPath != "" {
-		httpMux.HandleFunc("/ca-bundle.crt", func(w http.ResponseWriter, r *http.Request) {
+		httpMux.HandleFunc("/ca.crt", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, config.CAPath)
 		})
 	}
